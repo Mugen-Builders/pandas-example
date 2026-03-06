@@ -12,7 +12,7 @@ rollup_server = environ["ROLLUP_HTTP_SERVER_URL"]
 logger.info(f"HTTP rollup_server url is {rollup_server}")
 
 # ---------------------------------------------------------------------------
-# Mock seed data — three lending pools with pre-seeded positions
+# Mock data — three lending pools with pre-seeded positions
 # ---------------------------------------------------------------------------
 
 pools_df = pd.DataFrame(
@@ -127,7 +127,9 @@ def handle_advance(data):
     action = payload.get("action")
     asset = payload.get("asset")
     amount = float(payload.get("amount", 0))
-    user = data.get("metadata", {}).get("msg_sender", "0xUnknown")
+    metadata = data.get("metadata", {})
+    user = metadata.get("msg_sender", "0xUnknown")
+    block_timestamp = metadata.get("block_timestamp")
 
     logger.info(f"advance | {action} {amount} {asset} from {user}")
 
@@ -211,7 +213,7 @@ def handle_advance(data):
                 "asset": asset,
                 "action": action,
                 "amount": amount,
-                "timestamp": pd.Timestamp.now().isoformat(),
+                "timestamp": pd.Timestamp(block_timestamp, unit="s").isoformat(),
             }
         ]
     )
@@ -314,5 +316,6 @@ while True:
         logger.info("No pending rollup request, trying again")
     else:
         rollup_request = response.json()
+        data = rollup_request["data"]
         handler = handlers[rollup_request["request_type"]]
         finish["status"] = handler(rollup_request["data"])
